@@ -1,7 +1,8 @@
-This is a reskin for the wifiPineapple Virtual Pager for those with Black cases
+This is a reskin for the wifiPineapple Virtual Pager for those with black cases
 
-replace the images in the /pineapple/ui/images direcory and reboot
-
+replace the images in the /pineapple/ui/images direcory
+replace the index.html in the /pineapple/ui directory
+refresh browser
 you may need to delete cached images and files in your browser for the change to appear
 
 
