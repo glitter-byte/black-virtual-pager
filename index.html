@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PenPineappleApplePenPager</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet"> -->
+
+    <style>
+        @font-face {
+            font-family: 'Material Icons';
+            font-style: normal;
+            font-weight: 400;
+            src: local('Material Icons'),
+            local('MaterialIcons-Regular'),
+            url(/MaterialIcons-Regular.ttf) format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Steelfish';
+            font-style: normal;
+            font-weight: 400;
+            src: local('Steelfish'),
+            url(/Steelfish.ttf) format('truetype');
+        }
+
+        .material-icons {
+            font-family: 'Material Icons',serif;
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;  /* Preferred icon size */
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+            padding-top: 7px;
+
+            /* Support for all WebKit browsers. */
+            -webkit-font-smoothing: antialiased;
+            /* Support for Safari and Chrome. */
+            text-rendering: optimizeLegibility;
+
+            /* Support for Firefox. */
+            -moz-osx-font-smoothing: grayscale;
+
+            /* Support for IE. */
+            font-feature-settings: 'liga';
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+            /* overflow: hidden; */        /* remove this */
+            overflow-x: hidden;            /* optional: prevent horizontal scroll */
+            overflow-y: auto;              /* allow vertical scrolling */
+            color: #A0A0A0;
+            background-color: #303030;
+        }
+
+        #pager_ui {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+        #pager_ui td {
+            padding: 0;
+            margin: 0;
+        }
+        #pager_ui img {
+            display: block;
+        }
+
+        #login_error {
+
+        }
+
+        #terminal-wrapper {
+            margin-top: 20px;
+            display: block;
+            text-align: left;
+            width: 100%;
+        }
+        #terminal {
+            margin: 0 auto;
+            width: 720px;
+            height: 260px;
+            border: 1px solid #505050;
+            box-shadow: 0 0 10px rgba(0,0,0,0.7) inset;
+            text-align: left !important;
+        }
+        #terminal .xterm {
+            text-align: left !important;
+        }
+
+        #loading {
+            width: 745px;
+        }
+
+        #pager_error {
+            width: 480px;
+            height: 222px;
+            font-size: large;
+            text-align: center;
+        }
+
+        button.toggle {
+            z-index: 10;
+            position: fixed;
+            left: 12px;
+            top: 10px;
+            background-color: #303030;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        nav {
+            width: 250px;
+            height: auto;
+            min-height: 100%;
+            background-color: #303030;
+            padding-top: 60px;
+            font-family: 'Steelfish', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+
+            &.min {
+                width: 60px;
+
+                .sidebarsub {
+                    opacity: 0;
+                    display: none;
+                }
+            }
+
+            ul {
+                color: white;
+
+                a {
+                    display: flex;
+                    gap: 10px;
+                    padding: 10px 20px;
+                    color: white;
+                    text-decoration: none;
+
+                    font-size: 30px;
+                    line-height: 1.15;
+
+                    &:hover {
+                        background-color: gray;
+                    }
+
+                    .sidebarsub {
+                        transition: opacity 0.3s ease-in-out;
+                        display: block;
+                    }
+                }
+            }
+        }
+
+        .sidebarmini {
+            font-size: 20px;
+            padding-top: 6px;
+            line-height: 1.25;
+            color: #e8e8e8;
+            opacity: 0.95;
+        }
+
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                position: fixed;
+                left: -250px;
+                top: 0;
+            }
+
+            nav.active {
+                left: 0;
+            }
+        }
+
+        .sidebarmini {
+            font-size: 20px;
+            padding-top: 6px;
+            line-height: 1.25;
+            color: #c9c9c9;
+            opacity: 0.95;
+        }
+
+        body.logged-in #header-image {
+            display: none;
+            height: 0;
+            width: auto;
+        }
+
+        /* Brief "pressed" feedback for pager buttons */
+        .pager-btn {
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-drag: none;
+            transition: filter 0.08s ease;
+        }
+        .pager-btn.pressed {
+            filter: brightness(0.6);
+        }
+
+        #archiveOverlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 9999;
+        }
+
+        #archiveOverlay.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            border: 6px solid rgba(255, 255, 255, 0.25);
+            border-top-color: rgba(255, 255, 255, 0.9);
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #archiveToast {
+            position: fixed;
+            left: 50%;
+            top: 18px;
+            transform: translateX(-50%);
+            background: rgba(25, 25, 25, 0.95);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 10px 14px;
+            border-radius: 8px;
+            z-index: 10000;
+            display: none;
+            font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+        }
+
+        #archiveToast.show {
+            display: block;
+        }
+
+        .terminal-shortcuts {
+            margin: 10px auto 0 auto;
+            width: 720px;
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .term-btn {
+            background: #444;
+            color: #ff0000;
+            border: 1px solid #555;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-family: 'Steelfish', sans-serif;
+            font-size: 18px;
+            border-radius: 4px;
+            min-width: 50px;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .term-btn:hover {
+            background: #555;
+        }
+
+        .term-btn:active {
+            background: #222;
+        }
+    </style>
+
+    <!-- xterm.js -->
+    <link rel="stylesheet" href="xterm.css" />
+    <script src="xterm.js"></script>
+</head>
+<body>
+
+    <div id="archiveOverlay" aria-hidden="true">
+        <div class="spinner" role="status" aria-label="Archiving loot"></div>
+    </div>
+    <div id="archiveToast" role="status" aria-live="polite"></div>
+
+    <button hidden id="sidebarbutton" class="toggle" onclick="toggleSidenav()">
+        <span class="material-icons">menu</span>
+    </button>
+
+    <nav hidden id="sidebarnav" class="min">
+        <div style="display: flex; flex-direction: column; flex-flow: column nowrap; height: 100%;">
+            <ul>
+                <li><a href="https://docs.hak5.org/wifi-pineapple-pager/" target="_blank"><i class="material-icons">auto_stories</i><div class="sidebarsub">WiFi Pineapple Pager Manual</div></a></li>
+
+                <li><a href="/api/files/zip/root/loot/handshakes"><i class="material-icons">handshake</i><div class="sidebarsub">Download Handshakes
+                            <div class="sidebarmini">Download collected WPA and WPA2 handshakes as a zip</div>
+                        </div></a>
+                </li>
+
+                <li><a href="/api/loot/zip"><i class="material-icons">download</i><div class="sidebarsub">Download Loot
+                            <div class="sidebarmini">Download your entire loot collection as a zip</div>
+                        </div></a>
+                </li>
+
+                <li>
+                    <a href="#" onclick="archiveLoot(); return false;">
+                        <i class="material-icons">archive</i>
+                        <div class="sidebarsub">Archive Loot
+                            <div class="sidebarmini">Move your loot to /root/loot/archive/</div>
+                        </div>
+                    </a>
+                </li>
+            </ul>
+            <div style="flex: 1;"></div>
+            <ul>
+                <li><a href="#" onclick="logout()"><i class="material-icons">logout</i><div class="sidebarsub">Log Out</div></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+
+    <center style="margin-bottom: 200px">
+    <br>
+
+    <img id="header-image" src="images/virtualpagertitle.png" style="display: block; margin: 0 auto;">
+
+    <div hidden id="login" style="margin-left:-50px; padding-top: 15px">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" minlength="8" required />
+        <span style="border-left: 1px solid white; height:10px; padding-left: 3px; padding-right: 3px;"></span>
+        <button id="loginbutton">Login</button>
+        <div id="login_error"></div>
+    </div>
+
+    <table hidden id="pager_ui" width="745" height="531" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td colspan="13">
+                <img src="images/virtual_pager_01.png" width="744" height="67" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="67" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" rowspan="3">
+                <img src="images/virtual_pager_02.png" width="132" height="324" alt="">
+            </td>
+            <td colspan="9">
+                <!-- IMPORTANT: this is the live screen surface -->
+                <img id="pager" width="480" height="222" tabindex="0">
+                <!-- hidden canvas used to convert RGBA framebuffer -> PNG -->
+                <canvas id="pager_canvas" width="480" height="222" style="display:none;"></canvas>
+                <div hidden id="pager_error">
+                    Lost connection to virtual pager
+                    <br>
+                    <button id="screen_retry">Reconnect</button>
+                </div>
+            </td>
+            <td colspan="2" rowspan="2">
+                <img src="images/virtual_pager_04.png" width="132" height="287" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="222" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td colspan="9">
+                <img src="images/virtual_pager_05.png" width="480" height="65" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="65" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <img src="images/virtual_pager_06.png" width="228" height="37" alt="">
+            </td>
+            <td rowspan="5">
+                <img class="pager-btn" src="images/LEFT.png" onclick="keyws && keyws.send('ArrowLeft')" role="button" width="87" height="109" alt="">
+            </td>
+            <td rowspan="6">
+                <img src="images/virtual_pager_08.png" width="7" height="176" alt="">
+            </td>
+            <td rowspan="2">
+                <img class="pager-btn" src="images/UP.png" onclick="keyws && keyws.send('ArrowUp')" role="button" width="139" height="49" alt="">
+            </td>
+            <td rowspan="6">
+                <img src="images/virtual_pager_10.png" width="9" height="176" alt="">
+            </td>
+            <td colspan="2" rowspan="5">
+                <img class="pager-btn" src="images/RIGHT.png" onclick="keyws && keyws.send('ArrowRight')" role="button" width="86" height="109" alt="">
+            </td>
+            <td rowspan="6">
+                <img src="images/virtual_pager_12.png" width="56" height="176" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="37" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td rowspan="5">
+                <img src="images/virtual_pager_13.png" width="73" height="139" alt="">
+            </td>
+            <td colspan="2" rowspan="3">
+                <img class="pager-btn" src="images/B_Button.png" onclick="keyws && keyws.send('Escape')" role="button" width="115" height="44" alt="">
+            </td>
+            <td rowspan="5">
+                <img src="images/virtual_pager_15.png" width="22" height="139" alt="">
+            </td>
+            <td rowspan="3">
+                <img class="pager-btn" src="images/A_Button.png" onclick="keyws && keyws.send('Enter')" role="button" width="115" height="44" alt="">
+            </td>
+            <td rowspan="5">
+                <img src="images/virtual_pager_17.png" width="35" height="139" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="12" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <img src="images/virtual_pager_18.png" width="139" height="11" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="11" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td rowspan="2">
+                <img class="pager-btn" src="images/DOWN.png" onclick="keyws && keyws.send('ArrowDown')" role="button" width="139" height="49" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="21" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" rowspan="2">
+                <img src="images/virtual_pager_20.png" width="115" height="95" alt="">
+            </td>
+            <td rowspan="2">
+                <img src="images/virtual_pager_21.png" width="115" height="95" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="28" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <img src="images/virtual_pager_22.png" width="87" height="67" alt="">
+            </td>
+            <td>
+                <img src="images/virtual_pager_23.png" width="139" height="67" alt="">
+            </td>
+            <td colspan="2">
+                <img src="images/virtual_pager_24.png" width="86" height="67" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="1" height="67" alt="">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <img src="images/spacer.gif" width="73" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="59" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="56" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="22" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="115" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="35" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="87" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="7" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="139" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="9" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="10" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="76" height="1" alt="">
+            </td>
+            <td>
+                <img src="images/spacer.gif" width="56" height="1" alt="">
+            </td>
+            <td></td>
+        </tr>
+    </table>
+
+    <!-- xterm.js -->
+    <div hidden id="terminalblock">
+        <div class="terminal-shortcuts">
+            <button class="term-btn" onclick="sendTermKey('\t')">TAB</button>
+            <button class="term-btn" onclick="sendTermKey('\x1b[A')">UP</button>
+            <button class="term-btn" onclick="sendTermKey('\x1b[B')">DOWN</button>
+            <button class="term-btn" onclick="sendTermKey('\x1b[D')">LEFT</button>
+            <button class="term-btn" onclick="sendTermKey('\x1b[C')">RIGHT</button>
+            <button class="term-btn" onclick="sendTermKey('\x1b')">ESC</button>
+            <button class="term-btn" onclick="sendTermKey('\x03')">CTRL+C</button>
+            <button class="term-btn" onclick="sendTermKey('\x0c')">CLEAR</button>
+        </div>
+        <div id="terminal-wrapper">
+            <div id="terminal"></div>
+        </div>
+        <p>(Click the shell area above to focus it, then type. When not focused, keys control the Pager.)</p>
+    </div>
+
+    <div id="loading">
+        Loading virtual pager...<br>
+        <progress></progress>
+    </div>
+
+</center>
+	</main>
+
+<script>
+    let login_ok = false;
+    let keyws, screenws, shellws;
+    let server_id = '';
+
+    // Visible screen size (matches your pager)
+    const SCREEN_WIDTH = 480;
+    const SCREEN_HEIGHT = 222;
+
+    // Stride in BYTES between vertically adjacent pixels in Go's image.RGBA.
+    const FB_STRIDE = SCREEN_WIDTH * 4;
+
+    let loggedFrameInfo = false;
+
+    function toggleSidenav() {
+        const sidenav = document.querySelector("#sidebarnav");
+
+        if (window.innerWidth <= 768) {
+            sidenav.classList.remove("min");
+            sidenav.classList.toggle("active");
+        } else {
+            sidenav.classList.remove("active");
+            sidenav.classList.toggle("min");
+        }
+    }
+
+    function renderRGBAFrame(bytes) {
+        const pager = document.getElementById('pager');
+        const canvas = document.getElementById("pager_canvas");
+        const ctx = canvas.getContext("2d");
+
+        if (!loggedFrameInfo) {
+            console.log("frameInfo", {
+                byteLength: bytes.length,
+                expectedBytesMin: FB_STRIDE * SCREEN_HEIGHT,
+                SCREEN_WIDTH,
+                SCREEN_HEIGHT,
+                FB_STRIDE
+            });
+            loggedFrameInfo = true;
+        }
+
+        if (bytes.length < FB_STRIDE * SCREEN_HEIGHT) {
+            console.warn("Frame too small for configured stride/size");
+            return;
+        }
+
+        const imageData = ctx.createImageData(SCREEN_WIDTH, SCREEN_HEIGHT);
+        const dst = imageData.data; // RGBA
+
+        let di = 0;
+        for (let y = 0; y < SCREEN_HEIGHT; y++) {
+            const rowStart = y * FB_STRIDE;
+            for (let x = 0; x < SCREEN_WIDTH; x++) {
+                const si = rowStart + x * 4; // 4 bytes per pixel: R,G,B,A
+                dst[di    ] = bytes[si    ]; // R
+                dst[di + 1] = bytes[si + 1]; // G
+                dst[di + 2] = bytes[si + 2]; // B
+                dst[di + 3] = bytes[si + 3]; // A
+                di += 4;
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        pager.src = canvas.toDataURL("image/png");
+    }
+
+    function connect() {
+        const pager = document.getElementById('pager')
+        const pagererr = document.getElementById('pager_error')
+
+        if (!pager) {
+            console.error("pager <img> not found in DOM");
+        }
+
+        keyws = new WebSocket(`ws://${window.location.host}/api/pager/input/keys.ws`);
+
+        screenws = new WebSocket(`ws://${window.location.host}/api/pager/display/screen.ws`);
+        screenws.binaryType = "arraybuffer";
+
+        screenws.onopen = () => {
+            pager.style.display = 'block'
+            pagererr.hidden = true
+        }
+
+        screenws.onmessage = (event) => {
+            if (!pager) return;
+            const buffer = event.data;          // ArrayBuffer
+            const bytes = new Uint8Array(buffer); // Raw RGBA Pix from Go
+            renderRGBAFrame(bytes);
+        };
+
+        screenws.onerror = () => {
+            pager.style.display = 'none'
+            pagererr.hidden = false
+        }
+
+        shellws = new WebSocket(`ws://${window.location.host}${SHELL_WS_PATH}`);
+
+        shellws.onopen = () => {
+            term.write("[connected to shell]\r\n");
+        };
+
+        shellws.onmessage = (event) => {
+            if (typeof event.data === 'string') {
+                term.write(event.data);
+            } else if (event.data instanceof ArrayBuffer) {
+                const data = new Uint8Array(event.data);
+                term.write(data);
+            } else if (event.data instanceof Blob) {
+                event.data.arrayBuffer().then((buf) => {
+                    const data = new Uint8Array(buf);
+                    term.write(data);
+                });
+            }
+        };
+
+        shellws.onclose = () => {
+            term.write("\r\n[disconnected from shell]\r\n");
+        };
+
+        shellws.onerror = () => {
+            term.write("\r\n[error connecting to shell]\r\n");
+        };
+    }
+
+    function close() {
+        if (keyws !== null) {
+            keyws.onclose = function () { };
+            keyws.close();
+        }
+
+        if (shellws !== null) {
+            shellws.onclose = function () { };
+            shellws.close();
+        }
+
+        if (screenws !== null) {
+            screenws.onclose = function () { };
+            screenws.close();
+        }
+    }
+
+    function sendTermKey(data) {
+        if (shellws && shellws.readyState === WebSocket.OPEN) {
+            shellws.send(data);
+            // Only focus if we're not on a touch device to avoid zooming
+            if (!('ontouchstart' in window)) {
+                term.focus();
+            }
+        }
+    }
+
+    function check_login() {
+        const xhr = new XMLHttpRequest()
+        xhr.onload = () => {
+            const sidebarbutton = document.getElementById("sidebarbutton")
+            const sidebarnav = document.getElementById("sidebarnav")
+            const loadingdiv = document.getElementById("loading")
+            const logindiv = document.getElementById("login")
+            const pagerdiv = document.getElementById("pager_ui")
+            const termdiv = document.getElementById("terminalblock")
+
+            loadingdiv.hidden = true
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const response = JSON.parse(xhr.responseText)
+                server_id = response["serverid"]
+
+                    if (!login_ok) {
+                        logindiv.hidden = true
+                        pagerdiv.hidden = false
+                        termdiv.hidden = false
+                        sidebarbutton.hidden = false
+                        sidebarnav.hidden = false
+
+                        document.body.classList.add("logged-in")
+
+                        connect()
+
+                        login_ok = true
+                    }
+                } else {
+                    logindiv.hidden = false
+
+                    if (login_ok) {
+                        pagerdiv.hidden = true
+                        termdiv.hidden = true
+                        sidebarbutton.hidden = true
+                        sidebarnav.hidden = true
+
+                        document.body.classList.remove("logged-in")
+
+                        login_ok = false
+                        close()
+                    }
+                }
+            }
+
+        xhr.open('GET', '/api/api_ping')
+        xhr.send()
+    }
+
+    const SHELL_WS_PATH = "/api/terminal/openWs";
+
+    const term = new Terminal({
+        cols: 80,
+        rows: 24,
+        convertEol: true,
+        cursorBlink: true,
+        scrollback: 1000,
+        theme: {
+            background: "#000000",
+            foreground: "#ff0000",
+        },
+    });
+
+    function showArchiveOverlay(show) {
+        const el = document.getElementById("archiveOverlay");
+        if (!el) return;
+        el.classList.toggle("show", !!show);
+        el.setAttribute("aria-hidden", show ? "false" : "true");
+    }
+
+    function showArchiveToast(message) {
+        const toast = document.getElementById("archiveToast");
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.setTimeout(() => toast.classList.remove("show"), 2500);
+    }
+
+    async function archiveLoot() {
+        try {
+            showArchiveOverlay(true);
+
+            const res = await fetch("/api/loot/archive", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+
+            showArchiveOverlay(false);
+
+            if (!res.ok || res.status !== 200) {
+                showArchiveToast(`Archive failed (${res.status})`);
+                return;
+            }
+
+            showArchiveToast("Loot has been archived!");
+        } catch (e) {
+            showArchiveOverlay(false);
+            showArchiveToast("Archive failed (network error)");
+        }
+    }
+
+    function logout() {
+        document.cookie = `AUTH_${server_id}=dead;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT`
+        check_login()
+    }
+
+    function login() {
+        const xhr = new XMLHttpRequest()
+        const pw = document.getElementById('password')
+        const err = document.getElementById('login_error')
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const response = JSON.parse(xhr.responseText)
+                const decoded = JSON.parse(atob(response['token'].split('.')[0]))
+                document.cookie = `AUTH_${decoded.ServerId}=${response['token']};path=/;samesite=strict;max-age=${60*60*12}`
+                serverid = decoded.ServerId
+                check_login()
+            } else if (xhr.status == 401) {
+                err.innerHTML = '<p>Login failed (incorrect password)</p>'
+            } else {
+                err.innerHTML = `<p>Error logging in (${xhr.status}).  Make sure you are connected to the WiFi Pineapple Pager over USB or the management network and that the Virtual Pager is enabled in the Settings &gt; System panel.`
+            }
+        }
+
+        xhr.ontimeout = () => {
+            err.innerHTML = `<p>Error logging in (connection timed out).  Make sure you are connected to the WiFi Pineapple Pager over USB or the management network and that the Virtual Pager is enabled in the Settings &gt; System panel.`
+        }
+
+        const json = {
+            "username": "root",
+            "password": pw.value
+        }
+
+        xhr.open('POST', '/api/login')
+        xhr.timeout = 2000
+        xhr.setRequestHeader('Content-Type', 'application/json')
+        xhr.send(JSON.stringify(json))
+    }
+
+    (function init() {
+        const terminationEvent = 'onpagehide' in self ? 'pagehide' : 'unload';
+        window.addEventListener(terminationEvent, (event) => {
+            if (event.persisted === false) {
+                close()
+            }
+        });
+
+        // Handle coming back from background (mobile)
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === 'visible' && login_ok) {
+                // Check if sockets are closed and trigger reconnect if needed
+                const screenClosed = !screenws || screenws.readyState === WebSocket.CLOSED;
+                const shellClosed = !shellws || shellws.readyState === WebSocket.CLOSED;
+                
+                if (screenClosed || shellClosed) {
+                    console.log("Visibility restored, reconnecting...");
+                    connect();
+                }
+            }
+        });
+
+        check_login();
+
+        const loginbutton = document.getElementById("loginbutton")
+        loginbutton.onclick = () => { login() }
+
+        const pw = document.getElementById("password")
+        pw.onkeyup = (e) => {
+            if (e.key === 'Enter' || e.keyCore === 13) { login() }
+        }
+
+        const retrybutton = document.getElementById("screen_retry")
+        retrybutton.onclick = () => {
+            connect_screen()
+        }
+
+        const termContainer = document.getElementById("terminal");
+
+        if (!termContainer) {
+            console.error("terminal container not found in DOM");
+        }
+
+        term.open(termContainer);
+        term.focus();
+        termContainer.addEventListener("click", () => term.focus());
+
+        // Focus pager when clicked so it can receive keyboard input
+        const pagerEl = document.getElementById("pager");
+        if (pagerEl) {
+            pagerEl.addEventListener("click", () => pagerEl.focus());
+        }
+
+        // Keyboard to shell; xterm handles key events when focused
+        term.onData((data) => {
+            if (shellws && shellws.readyState === WebSocket.OPEN) {
+                // Send as text; your Go handler already accepts TextMessage
+                shellws.send(data);
+            }
+        });
+
+        const SCROLL_KEYS = new Set([
+            "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+            " ", "Spacebar", "PageUp", "PageDown", "Home", "End"
+        ]);
+
+        // Global key handling - send to pager only when pager (or body) is focused
+        document.addEventListener("keydown", (e) => {
+            const active = document.activeElement;
+            const pagerFocused = (pagerEl && active === pagerEl);
+            const bodyFocused = (active === document.body);
+
+            // If xterm (or any other control) is focused, do nothing here.
+            if (!pagerFocused && !bodyFocused) return;
+
+            // Prevent page scrolling when controlling the pager
+            if (SCROLL_KEYS.has(e.key)) {
+                e.preventDefault();
+            }
+
+            if (!e.repeat && keyws && keyws.readyState === WebSocket.OPEN) {
+                keyws.send(e.key);
+            }
+        }, { capture: true });
+
+        // Click/tap feedback: darken for 0.1s
+        const PRESS_MS = 120;
+        document.querySelectorAll(".pager-btn").forEach((el) => {
+            const press = () => {
+                el.classList.add("pressed");
+                window.setTimeout(() => el.classList.remove("pressed"), PRESS_MS);
+            };
+            el.addEventListener("pointerdown", press);
+            el.addEventListener("click", press);
+        });
+    })();
+</script>
+</body>
+</html>
